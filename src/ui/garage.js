@@ -70,7 +70,7 @@ export class Garage {
     this.group.add(wash);
 
     const floor = new THREE.Mesh(
-      new THREE.CircleGeometry(17, 80),
+      new THREE.CircleGeometry(40, 96),
       new THREE.MeshPhysicalMaterial({
         color: 0x0a0d12, roughness: 0.30, metalness: 0.30,
         clearcoat: 0.55, clearcoatRoughness: 0.26, envMapIntensity: 0.45,
@@ -79,6 +79,40 @@ export class Garage {
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     this.group.add(floor);
+
+    const fade = new THREE.Mesh(
+      new THREE.RingGeometry(11, 40, 64),
+      new THREE.MeshBasicMaterial({
+        color: 0x05070b, transparent: true, opacity: 0.0, toneMapped: false,
+        depthWrite: false, side: THREE.DoubleSide,
+      })
+    );
+    fade.rotation.x = -Math.PI / 2;
+    fade.position.y = 0.004;
+    // radial alpha ramp so the stage dissolves rather than ending in a rim
+    {
+      const g2 = fade.geometry;
+      const pos2 = g2.attributes.position;
+      const col = new Float32Array(pos2.count * 3);
+      g2.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      fade.material.vertexColors = true;
+      fade.material.transparent = true;
+      const alpha = new Float32Array(pos2.count);
+      for (let i = 0; i < pos2.count; i++) {
+        const r2 = Math.hypot(pos2.getX(i), pos2.getY(i));
+        alpha[i] = Math.min(1, Math.max(0, (r2 - 11) / 13));
+        col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = 0.02;
+      }
+      fade.material.opacity = 1;
+      fade.material.onBeforeCompile = (sh) => {
+        sh.vertexShader = 'attribute float aA; varying float vA;\n' + sh.vertexShader
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\n vA = aA;');
+        sh.fragmentShader = 'varying float vA;\n' + sh.fragmentShader
+          .replace('#include <dithering_fragment>', '#include <dithering_fragment>\n gl_FragColor.a *= vA;');
+      };
+      g2.setAttribute('aA', new THREE.BufferAttribute(alpha, 1));
+    }
+    this.group.add(fade);
 
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(7.4, 7.75, 96),
@@ -333,14 +367,14 @@ export class Garage {
     // orbiting hero camera
     const wide = innerWidth / innerHeight > 1.25;
     const a = -0.66 + Math.sin(elapsed * 0.14) * 0.30;
-    const r = wide ? 9.9 : 10.4;
+    const r = wide ? 10.6 : 11.2;
     this.camera.position.set(
       Math.sin(a) * r,
       1.95 + Math.sin(elapsed * 0.22) * 0.26,
       Math.cos(a) * r
     );
     // in landscape the spec panel owns the right-hand third, so bias the car left
-    this.camera.lookAt(wide ? 1.35 : 0, 0.60, 0);
+    this.camera.lookAt(wide ? 0.85 : 0, 0.62, 0);
     const fov = wide ? 36 : 42;
     if (Math.abs(this.camera.fov - fov) > 0.1) {
       this.camera.fov = fov;
