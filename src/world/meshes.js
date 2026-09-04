@@ -275,6 +275,20 @@ World.prototype.buildBarriers = function buildBarriers() {
   const postPos = [];
   const step = 3;
 
+  // Leave an opening where the access road meets the circuit, otherwise the
+  // armco seals the loop and the plaza inside it can never be reached.
+  const GATE = 15;
+  const nearGate = (x, z) => {
+    const path = this.plazaPath;
+    if (!path) return false;
+    for (let i = 0; i < path.length; i += 3) {
+      const dx = path[i].x - x, dz = path[i].z - z;
+      if (dx * dx + dz * dz < GATE * GATE) return true;
+    }
+    return false;
+  };
+  this.gatePosts = [];
+
   for (const side of [-1, 1]) {
     let prev = null, prevX = 0, prevZ = 0, prevY = 0;
     for (let i = 0; i <= S.length; i += step) {
@@ -283,8 +297,15 @@ World.prototype.buildBarriers = function buildBarriers() {
       const x = s.pos.x + s.lat.x * lateral;
       const z = s.pos.z + s.lat.z * lateral;
       const y = this.rawHeight(x, z);
+      if (nearGate(x, z)) {
+        // break the rail here: no vertices, no collider, no visual seam
+        if (prev !== null) this.gatePosts.push([prevX, prevY, prevZ]);
+        prev = null;
+        continue;
+      }
       const base = railGeo.length / 3;
       railGeo.push(x, y + 0.52, z, x, y + 0.94, z);
+      if (prev === null) this.gatePosts.push([x, y, z]);
       if (prev !== null) {
         // two-sided rail: drivers hit it from either face
         railIdx.push(prev, prev + 1, base + 1, prev, base + 1, base);
@@ -389,6 +410,91 @@ World.prototype.buildCity = function buildCity() {
   inst.name = 'city';
   this.cityMesh = inst;
   this.root.add(inst);
+};
+
+
+/* ── plaza access road + gate ──────────────────────────── */
+
+World.prototype.buildPlazaLink = function buildPlazaLink() {
+  const path = this.plazaPath;
+  if (!path || path.length < 4) return;
+
+  const HALF = 4.6;
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+  let run = 0;
+
+  for (let i = 0; i < path.length; i++) {
+    const p0 = path[Math.max(0, i - 1)];
+    const p1 = path[Math.min(path.length - 1, i + 1)];
+    const tx = p1.x - p0.x, tz = p1.z - p0.z;
+    const tl = Math.hypot(tx, tz) || 1;
+    const lx = -tz / tl, lz = tx / tl;
+    if (i > 0) run += Math.hypot(path[i].x - path[i - 1].x, path[i].z - path[i - 1].z);
+    for (const side of [-1, 1]) {
+      positions.push(
+        path[i].x + lx * HALF * side,
+        path[i].y + 0.016,
+        path[i].z + lz * HALF * side
+      );
+      uvs.push(side > 0 ? 1.4 : 0, run / 2.6);
+    }
+  }
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = i * 2, b = a + 1, c = a + 3, d = a + 2;
+    indices.push(a, b, c, a, c, d);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+
+  const mesh = new THREE.Mesh(geo, this.roadMaterial);
+  mesh.receiveShadow = true;
+  mesh.name = 'plazaLink';
+  this.root.add(mesh);
+
+  /* gate markers so the turn-off is findable at speed */
+  const postGeo = new THREE.CylinderGeometry(0.13, 0.16, 1.5, 8);
+  postGeo.translate(0, 0.75, 0);
+  const postMat = M.lightLens({ color: 0xff7a1f, power: 0.9, rough: 0.5 });
+  this.gateLampMaterial = postMat;
+  const posts = this.gatePosts || [];
+  if (posts.length) {
+    const inst = new THREE.InstancedMesh(postGeo, postMat, posts.length);
+    const m4 = new THREE.Matrix4();
+    posts.forEach((p, i) => {
+      m4.makeTranslation(p[0], p[1], p[2]);
+      inst.setMatrixAt(i, m4);
+    });
+    inst.instanceMatrix.needsUpdate = true;
+    inst.castShadow = true;
+    this.root.add(inst);
+  }
+
+  /* chevron board pointing down the slip road */
+  const head = path[Math.min(path.length - 1, path.length - 12)];
+  const sign = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.6, 0.9),
+    new THREE.MeshStandardMaterial({
+      color: 0x101418, roughness: 0.6,
+      emissive: new THREE.Color(0xff8a2b), emissiveIntensity: 0.75,
+      side: THREE.DoubleSide,
+    })
+  );
+  const back = path[Math.min(path.length - 1, path.length - 20)];
+  sign.position.set(head.x, head.y + 2.2, head.z);
+  sign.lookAt(back.x, back.y + 2.2, back.z);
+  this.root.add(sign);
+  const legs = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 2.2, 0.12),
+    M.metal({ color: 0x4a5058, roughness: 0.6, metalness: 0.8 })
+  );
+  legs.position.set(head.x, head.y + 1.1, head.z);
+  this.root.add(legs);
 };
 
 /* ── street furniture ──────────────────────────────────── */

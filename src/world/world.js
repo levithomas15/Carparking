@@ -58,6 +58,7 @@ export class World {
     this.buildRoadMesh();
     this.buildKerbs();
     this.buildBarriers();
+    this.buildPlazaLink();
     this.buildCity();
     this.buildProps();
     this.buildStartGantry();
@@ -254,12 +255,14 @@ export class World {
     // an access ribbon from the plaza out to the circuit
     const link = this.samples[Math.floor(this.samples.length * 0.5)];
     this.plazaLink = link;
+    this.plazaPath = [];
     const steps = 90;
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
       const x = lerp(P.x + P.w / 2 - 6, link.pos.x, smoothstep(0, 1, t));
       const z = lerp(P.z, link.pos.z, smoothstep(0, 1, t));
       const y = lerp(P.y, link.pos.y, smoothstep(0, 1, t));
+      this.plazaPath.push({ x, y, z });
       const w = 9;
       const c = Math.ceil((w + 10) / this.cell);
       const gx = Math.round(this.worldToGrid(x)), gz = Math.round(this.worldToGrid(z));
