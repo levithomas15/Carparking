@@ -28,6 +28,9 @@ export class Input {
     this._padIndex = null;
     this._lastShiftUp = false;
     this._lastShiftDown = false;
+    this._btnSteer = 0;
+    this._btnLeft = false;
+    this._btnRight = false;
 
     this.pedalGas = 0;
     this.pedalBrake = 0;
@@ -110,6 +113,29 @@ export class Input {
     this.bindTap($('#btn-reset'), () => { this.actions.reset = true; });
     this.bindTap($('#btn-cam'), () => { this.actions.camera = true; });
     this.bindTap($('#btn-horn'), () => { this.actions.horn = true; });
+
+    this.bindHold($('#steer-left'), (v) => { this._btnLeft = v; });
+    this.bindHold($('#steer-right'), (v) => { this._btnRight = v; });
+    $('#tilt-hint')?.addEventListener('click', () => {
+      this.recentreTilt();
+      vibrate(12);
+    });
+
+    this.applySteeringMode();
+  }
+
+  /**
+   * Show the control that belongs to the chosen steering mode. Without this
+   * the wheel markup sits in the page but never becomes visible.
+   */
+  applySteeringMode() {
+    const mode = settings.get('steering');
+    const set = (sel, on) => $(sel)?.classList.toggle('ctrl-off', !on);
+    set('#wheel-zone', mode === 'wheel');
+    set('#steer-buttons', mode === 'buttons');
+    set('#tilt-hint', mode === 'tilt');
+    if (mode === 'tilt') this.recentreTilt();
+    this.mode = mode;
   }
 
   /**
@@ -265,7 +291,7 @@ export class Input {
   /* ── per-frame ───────────────────────────────────────── */
 
   update(dt) {
-    this.mode = settings.get('steering');
+    if (settings.get('steering') !== this.mode) this.applySteeringMode();
     this.sensitivity = settings.get('steerSensitivity');
     this.manual = settings.get('transmission') === 'manual';
 
@@ -301,9 +327,14 @@ export class Input {
       if (Math.abs(this._wheelAngle) < 0.004) this._wheelAngle = 0;
     }
 
+    // button steering ramps like the keyboard so it is controllable at speed
+    const btnTarget = (this._btnRight ? 1 : 0) - (this._btnLeft ? 1 : 0);
+    this._btnSteer = damp(this._btnSteer, btnTarget, btnTarget === 0 ? 9.5 : 4.2, dt);
+
     let touchSteer = 0;
     if (this.mode === 'wheel') touchSteer = this._wheelAngle / MAX_WHEEL_ANGLE;
     else if (this.mode === 'tilt') touchSteer = this._tilt;
+    else if (this.mode === 'buttons') touchSteer = this._btnSteer;
 
     // strongest source wins so the player can mix wheel, keys and pad freely
     const candidates = [touchSteer, this._keySteer, padSteer];

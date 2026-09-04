@@ -207,7 +207,7 @@ body{position:fixed;inset:0}
 #minimap{width:100%;height:100%;display:block}
 
 .cluster{
-  position:absolute;left:calc(var(--safe-l) + 14px);bottom:calc(var(--safe-b) + 12px);
+  position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--safe-b) + 8px);
   width:132px;height:132px;pointer-events:none
 }
 .cluster-svg{width:100%;height:100%;transform:rotate(135deg)}
@@ -235,7 +235,7 @@ body{position:fixed;inset:0}
 .shift-lights i.on2{background:#ffd166;box-shadow:0 0 9px #ffd166}
 .shift-lights i.on3{background:var(--hot2);box-shadow:0 0 11px var(--hot2)}
 
-.hud-flags{position:absolute;left:calc(var(--safe-l) + 14px);bottom:calc(var(--safe-b) + 152px);display:flex;gap:5px}
+.hud-flags{position:absolute;left:calc(var(--safe-l) + 12px);top:calc(var(--safe-t) + 58px);display:flex;gap:5px}
 .flag{font-size:8px;font-weight:800;letter-spacing:.12em;padding:3px 6px;border-radius:6px;
   background:rgba(255,255,255,.06);color:#3f4855;border:1px solid rgba(255,255,255,.07)}
 .flag.on{background:rgba(124,245,192,.16);color:var(--mint);border-color:rgba(124,245,192,.34)}
@@ -245,8 +245,10 @@ body{position:fixed;inset:0}
 #touch-controls{position:absolute;inset:0;pointer-events:none}
 #wheel-zone{
   position:absolute;left:calc(var(--safe-l) + 4px);bottom:calc(var(--safe-b) - 46px);
-  width:216px;height:216px;pointer-events:auto;touch-action:none;display:none
+  width:216px;height:216px;pointer-events:auto;touch-action:none;display:block
 }
+/* the active steering mode decides which control is on screen */
+.ctrl-off{display:none!important}
 .wheel{width:100%;height:100%;will-change:transform;transition:transform .05s linear;
   filter:drop-shadow(0 10px 26px rgba(0,0,0,.62))}
 .wheel-svg{width:100%;height:100%;opacity:.94}
@@ -276,9 +278,32 @@ body{position:fixed;inset:0}
 .pedal.brake .pedal-fill{background:linear-gradient(0deg,rgba(255,45,85,.55),rgba(255,45,85,.06))}
 .pedal.brake.on{border-color:rgba(255,92,122,.55);box-shadow:0 0 26px rgba(255,45,85,.3),0 10px 26px rgba(0,0,0,.5)}
 
+#steer-buttons{
+  position:absolute;left:calc(var(--safe-l) + 12px);bottom:calc(var(--safe-b) + 16px);
+  display:flex;gap:12px;pointer-events:auto
+}
+.steer-btn{
+  width:88px;height:88px;border-radius:26px;border:1px solid var(--glass-brd);
+  background:rgba(12,16,23,.5);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  color:var(--ink);display:grid;place-items:center;cursor:pointer;touch-action:none;
+  box-shadow:0 10px 26px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.09);
+  transition:transform .1s,background .15s;font-family:var(--font)
+}
+.steer-btn svg{width:38px;height:38px;fill:currentColor}
+.steer-btn:active,.steer-btn.on{
+  transform:scale(.94);background:rgba(255,138,43,.28);border-color:rgba(255,138,43,.6);color:#fff
+}
+
+#tilt-hint{
+  position:absolute;left:calc(var(--safe-l) + 14px);bottom:calc(var(--safe-b) + 22px);
+  padding:10px 16px;border-radius:14px;background:rgba(12,16,23,.5);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--glass-brd);
+  font-size:10px;letter-spacing:.18em;color:var(--ink-dim);pointer-events:auto;cursor:pointer
+}
+
 #aux-zone{
-  position:absolute;right:calc(var(--safe-r) + 12px);bottom:calc(var(--safe-b) + 126px);
-  display:flex;flex-direction:column;gap:7px;align-items:flex-end;pointer-events:auto
+  position:absolute;right:calc(var(--safe-r) + 12px);bottom:calc(var(--safe-b) + 124px);
+  display:flex;flex-direction:row;gap:7px;align-items:flex-end;pointer-events:auto
 }
 .aux{
   width:46px;height:38px;border-radius:12px;border:1px solid var(--glass-brd);
@@ -361,9 +386,11 @@ input[type=range]::-moz-range-thumb{width:17px;height:17px;border:none;border-ra
   .g-bars{grid-template-columns:1fr 1fr}
   .cluster{width:112px;height:112px}
   .speed-val{font-size:33px}
-  #wheel-zone{width:184px;height:184px;bottom:calc(var(--safe-b) - 40px)}
+  #wheel-zone{width:176px;height:176px;bottom:calc(var(--safe-b) - 44px)}
   .pedal{width:68px;height:86px}.pedal.brake{width:60px;height:76px}
-  .hud-flags{bottom:calc(var(--safe-b) + 130px)}
+  #aux-zone{bottom:calc(var(--safe-b) + 108px)}
+  .steer-btn{width:78px;height:78px;border-radius:22px}
+  .steer-btn svg{width:34px;height:34px}
 }
 @media (min-width:900px){
   .g-panel{left:auto;right:calc(var(--safe-r) + 26px);width:400px;bottom:calc(var(--safe-b) + 22px)}
@@ -371,4 +398,5 @@ input[type=range]::-moz-range-thumb{width:17px;height:17px;border:none;border-ra
   .cluster{width:158px;height:158px}
   .speed-val{font-size:46px}
 }
-.no-touch #touch-controls{opacity:.001;pointer-events:none}
+.no-touch #wheel-zone{opacity:.82}
+.no-touch #wheel-zone:hover{opacity:1}

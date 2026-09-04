@@ -151,6 +151,11 @@ class Game {
       this.hud.showToast(`GRAFIK: ${preset.name}`);
     } else if (key === 'weather' || key === 'timeOfDay') {
       this.applyWeather();
+    } else if (key === 'steering') {
+      this.input.applySteeringMode();
+      this.hud.showToast(
+        value === 'wheel' ? 'LENKRAD' : value === 'tilt' ? 'NEIGEN' : 'TASTEN', false, 1.2
+      );
     } else if (key === 'fov') {
       this.cameraRig.baseFov = value;
     } else if (key === 'assistABS' && this.vehicle) this.vehicle.abs = value;
