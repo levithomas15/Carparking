@@ -476,6 +476,8 @@ class Game {
 const game = new Game();
 game.init().catch(fatal);
 window.__apex = game;
+window.__apexCars = CARS;
+window.__apexVehicle = Vehicle;
 window.__apexDiag = () => ({
   state: game.state,
   fps: Math.round(game.fps),

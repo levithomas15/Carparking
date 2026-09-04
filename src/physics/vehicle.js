@@ -153,8 +153,12 @@ export class Vehicle {
   /* ── setup ───────────────────────────────────────────── */
 
   reset(x, z, heading = 0, y = null) {
+    // Always drop onto the rasterised surface: a banked road sits well below
+    // the centreline height a grid slot reports, and spawning even 20 cm high
+    // puts every wheel past full droop.
     const surf = this.world.surfaceAt(x, z);
-    this.position.set(x, (y ?? surf.y) + this.cgHeight + 0.02, z);
+    const groundY = Number.isFinite(y) ? Math.min(y, surf.y) : surf.y;
+    this.position.set(x, groundY + this.cgHeight + 0.005, z);
     this.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), heading);
     this.velocity.set(0, 0, 0);
     this.angularVelocity.set(0, 0, 0);
@@ -227,12 +231,20 @@ export class Vehicle {
     }
     if (this.reverse || this.shiftTimer > 0) return;
 
-    const upAt = lerp(s.redline * 0.62, s.redline * 0.965, clamp01(c.throttle * 1.2));
-    const downAt = lerp(s.redline * 0.24, s.redline * 0.50, clamp01(c.throttle * 1.4));
+    const upAt = lerp(s.redline * 0.66, s.redline * 0.955, clamp01(c.throttle * 1.2));
+    const downAt = lerp(s.redline * 0.22, s.redline * 0.44, clamp01(c.throttle * 1.4));
+
     if (this.rpm > upAt && this.gearIndex < s.gears.length - 1) {
-      this.gearIndex++; this.shiftTimer = s.shiftTime;
+      this.gearIndex++;
+      this.shiftTimer = s.shiftTime + 0.34;          // lockout stops hunting
     } else if (this.rpm < downAt && this.gearIndex > 0) {
-      this.gearIndex--; this.shiftTimer = s.shiftTime;
+      // Only drop a gear if the lower one would not immediately bounce off the
+      // upshift point again — that round trip is what makes a box hunt.
+      const nextRpm = this.rpm * (s.gears[this.gearIndex - 1] / s.gears[this.gearIndex]);
+      if (nextRpm < upAt * 0.94) {
+        this.gearIndex--;
+        this.shiftTimer = s.shiftTime + 0.28;
+      }
     }
   }
 
@@ -501,12 +513,17 @@ export class Vehicle {
     const idleOmega = (s.idleRpm * Math.PI) / 30;
     const limiterOmega = (s.limiter * Math.PI) / 30;
 
-    // clutch: slips off the line, locks once moving
-    const lockSpeed = 3.2;
-    this.clutch = this.shiftTimer > 0 ? 0 : clamp01(Math.abs(this.forwardSpeed) / lockSpeed);
-    const targetOmega = Math.max(idleOmega * (1 + c.throttle * 0.55), kinematicOmega);
-    this.engineOmega = lerp(targetOmega, Math.max(kinematicOmega, idleOmega * 0.9), this.clutch);
-    this.engineOmega = clamp(this.engineOmega, idleOmega * 0.6, limiterOmega);
+    // Clutch. Off the line it slips: the engine flares to a launch speed and
+    // still passes most of the torque, otherwise the car could never move —
+    // engagement driven purely by road speed deadlocks at a standstill.
+    const lockSpeed = 4.0;
+    const speedLock = clamp01(Math.abs(this.forwardSpeed) / lockSpeed);
+    this.clutch = this.shiftTimer > 0 ? 0.10 : Math.max(speedLock, c.throttle * 0.92);
+
+    const launchRpm = lerp(s.idleRpm, s.peakTorqueRpm * 0.62, clamp01(c.throttle));
+    const launchOmega = (launchRpm * Math.PI) / 30;
+    this.engineOmega = Math.max(kinematicOmega, lerp(launchOmega, idleOmega, speedLock));
+    this.engineOmega = clamp(this.engineOmega, idleOmega * 0.85, limiterOmega);
     this.rpm = (this.engineOmega * 30) / Math.PI;
 
     // rev limiter cut
@@ -526,16 +543,21 @@ export class Vehicle {
     if (this.tc && throttle > 0.05) {
       let worst = 0;
       for (const w of driven) worst = Math.max(worst, w.slipRatio);
-      if (worst > 0.20) {
-        const cut = clamp01((worst - 0.20) / 0.35);
-        engineTorque *= 1 - cut * 0.92;
-        this.tcActive = cut > 0.12;
+      // Trim, don't strangle: cutting almost all torque at the first hint of
+      // slip makes every launch feel broken rather than controlled.
+      if (worst > 0.26) {
+        const cut = clamp01((worst - 0.26) / 0.55);
+        engineTorque *= 1 - cut * 0.68;
+        this.tcActive = cut > 0.15;
       }
     }
     this.throttleOut = throttle;
     this.engineTorque = engineTorque;
 
     const shaftTorque = engineTorque * ratio * 0.92 * this.clutch;
+    // A wheel in the air has nothing to slow it, so cap it just past the speed
+    // the current gear could ever produce; otherwise landings explode.
+    const omegaCap = Math.abs(limiterOmega / Math.max(0.35, Math.abs(ratio))) + 40;
 
     // split across axles, then across the wheels with a limited-slip bias
     const rearShare = s.drivetrain === 'awd' ? s.rearBias : (s.drivetrain === 'rwd' ? 1 : 0);
@@ -548,6 +570,7 @@ export class Vehicle {
       const bias = clamp(0.5 + (Math.abs(other.omega) - Math.abs(w.omega)) * 0.045, 0.18, 0.82);
       const t = shaftTorque * axleShare * bias;
       w.omega += (t / w.inertiaW) * dt;
+      w.omega = clamp(w.omega, -omegaCap, omegaCap);
     }
 
     /* brakes */
