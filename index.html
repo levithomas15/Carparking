@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<title>APEX — Hypercar Simulator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#05070c" />
+<meta name="description" content="Ultra-realistischer 3D Auto-Simulator mit Lenkrad-Steuerung — Huracán EVO, Zonda HP Barchetta, Huracán STO." />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="./assets/icon.svg" />
+<link rel="stylesheet" href="./styles/app.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+</head>
+<body>
+
+<canvas id="stage"></canvas>
+<div id="vignette-overlay"></div>
+
+<!-- ══════════════════════ BOOT ══════════════════════ -->
+<section id="boot" class="screen active">
+  <div class="boot-inner">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <defs>
+            <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffd469"/><stop offset="55%" stop-color="#ff8a2b"/><stop offset="100%" stop-color="#ff2d55"/>
+            </linearGradient>
+          </defs>
+          <path d="M60 8 L108 104 H84 L60 54 L36 104 H12 Z" fill="url(#bg1)"/>
+          <path d="M60 62 L74 92 H46 Z" fill="#05070c" opacity=".85"/>
+        </svg>
+      </div>
+      <h1 class="brand-word">APEX</h1>
+      <p class="brand-sub">HYPERCAR&nbsp;SIMULATOR</p>
+    </div>
+    <div class="boot-bar"><i id="boot-fill"></i></div>
+    <p id="boot-status" class="boot-status">Initialisiere Rendering-Pipeline…</p>
+    <p class="boot-legal">Fan-Projekt · Nicht lizenziert · Nicht mit den Herstellern verbunden</p>
+  </div>
+</section>
+
+<!-- ══════════════════════ GARAGE ══════════════════════ -->
+<section id="garage" class="screen">
+  <header class="g-top">
+    <div class="g-logo">
+      <svg viewBox="0 0 120 120" aria-hidden="true"><path d="M60 8 L108 104 H84 L60 54 L36 104 H12 Z" fill="url(#bg1)"/></svg>
+      <span>APEX</span>
+    </div>
+    <button id="btn-settings" class="icon-btn" aria-label="Einstellungen">
+      <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="m19.4 13-.3-1 1.7-1.5-1.6-2.8-2.2.6-.9-.6-.5-2.2h-3.2l-.5 2.2-.9.6-2.2-.6-1.6 2.8L8.9 12l-.3 1-1.7 1.5 1.6 2.8 2.2-.6.9.6.5 2.2h3.2l.5-2.2.9-.6 2.2.6 1.6-2.8Z" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+    </button>
+  </header>
+
+  <div class="g-stage-hint" id="g-hint">◄ wischen zum Wechseln ►</div>
+
+  <div class="g-panel">
+    <div class="g-name-row">
+      <button class="g-arrow" id="car-prev" aria-label="Vorheriges Auto">‹</button>
+      <div class="g-name-block">
+        <div class="g-maker" id="car-maker">LAMBORGHINI</div>
+        <div class="g-model" id="car-model">HURACÁN EVO</div>
+        <div class="g-tagline" id="car-tag">V10 · 5.2 L · Allrad</div>
+      </div>
+      <button class="g-arrow" id="car-next" aria-label="Nächstes Auto">›</button>
+    </div>
+
+    <div class="g-specs">
+      <div class="spec"><b id="sp-power">640</b><span>PS</span></div>
+      <div class="spec"><b id="sp-accel">2.9</b><span>0–100 km/h</span></div>
+      <div class="spec"><b id="sp-top">325</b><span>km/h Vmax</span></div>
+      <div class="spec"><b id="sp-weight">1422</b><span>kg</span></div>
+    </div>
+
+    <div class="g-bars">
+      <div class="bar-row"><label>Leistung</label><div class="bar"><i id="bar-power"></i></div></div>
+      <div class="bar-row"><label>Handling</label><div class="bar"><i id="bar-handling"></i></div></div>
+      <div class="bar-row"><label>Bremsen</label><div class="bar"><i id="bar-brakes"></i></div></div>
+      <div class="bar-row"><label>Downforce</label><div class="bar"><i id="bar-aero"></i></div></div>
+    </div>
+
+    <div class="g-paint">
+      <span class="g-paint-label">LACK</span>
+      <div class="swatches" id="swatches"></div>
+    </div>
+
+    <div class="g-actions">
+      <button id="btn-drive" class="cta">
+        <span class="cta-glow"></span>
+        <span class="cta-label">FAHREN</span>
+      </button>
+    </div>
+    <div class="g-rims">
+      <button class="chip" data-rim="0">Felge I</button>
+      <button class="chip" data-rim="1">Felge II</button>
+      <button class="chip" data-rim="2">Felge III</button>
+    </div>
+  </div>
+
+  <div class="g-carousel" id="g-dots"></div>
+</section>
+
+<!-- ══════════════════════ DRIVE HUD ══════════════════════ -->
+<section id="hud" class="screen no-bg">
+
+  <div class="hud-top">
+    <button id="btn-pause" class="icon-btn glass" aria-label="Pause">
+      <svg viewBox="0 0 24 24"><rect x="7" y="5" width="3.5" height="14" rx="1"/><rect x="13.5" y="5" width="3.5" height="14" rx="1"/></svg>
+    </button>
+
+    <div class="hud-center-stack">
+      <div id="lap-box" class="lap-box">
+        <div class="lap-line"><span>RUNDE</span><b id="lap-num">1</b></div>
+        <div class="lap-time" id="lap-time">0:00.00</div>
+        <div class="lap-best" id="lap-best">BEST —:—.—</div>
+        <div class="lap-delta" id="lap-delta"></div>
+      </div>
+      <div id="drift-box" class="drift-box">
+        <div class="drift-score" id="drift-score">0</div>
+        <div class="drift-mult" id="drift-mult">x1.0</div>
+        <div class="drift-bar"><i id="drift-fill"></i></div>
+      </div>
+    </div>
+
+    <div class="hud-top-right">
+      <button id="btn-cam" class="icon-btn glass" aria-label="Kamera">
+        <svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3v10H4z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+      <div id="minimap-wrap"><canvas id="minimap" width="150" height="150"></canvas></div>
+    </div>
+  </div>
+
+  <!-- speed + tacho cluster -->
+  <div class="cluster" id="cluster">
+    <svg class="cluster-svg" viewBox="0 0 260 260">
+      <defs>
+        <linearGradient id="revGrad" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stop-color="#37d6ff"/><stop offset="55%" stop-color="#7cf5c0"/>
+          <stop offset="78%" stop-color="#ffd166"/><stop offset="100%" stop-color="#ff2d55"/>
+        </linearGradient>
+        <filter id="revGlow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="4.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <circle class="dial-bg" cx="130" cy="130" r="104"/>
+      <circle id="rev-arc" class="dial-arc" cx="130" cy="130" r="104" filter="url(#revGlow)"/>
+      <g id="tickmarks"></g>
+    </svg>
+    <div class="cluster-readout">
+      <div class="speed-val" id="speed-val">0</div>
+      <div class="speed-unit">km/h</div>
+      <div class="gear-val" id="gear-val">N</div>
+    </div>
+    <div class="shift-lights" id="shift-lights"></div>
+  </div>
+
+  <div class="hud-flags">
+    <span class="flag" id="flag-abs">ABS</span>
+    <span class="flag" id="flag-tc">TC</span>
+    <span class="flag" id="flag-esc">ESC</span>
+    <span class="flag" id="flag-hb">HB</span>
+  </div>
+
+  <!-- ── TOUCH CONTROLS ── -->
+  <div id="touch-controls">
+    <div id="wheel-zone">
+      <div id="wheel" class="wheel">
+        <svg viewBox="0 0 200 200" class="wheel-svg">
+          <defs>
+            <radialGradient id="rimG" cx="50%" cy="35%" r="70%">
+              <stop offset="0%" stop-color="#4a4f58"/><stop offset="45%" stop-color="#22262d"/><stop offset="100%" stop-color="#0a0c10"/>
+            </radialGradient>
+            <linearGradient id="carbonG" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#2b3038"/><stop offset="50%" stop-color="#12151a"/><stop offset="100%" stop-color="#262b33"/>
+            </linearGradient>
+            <linearGradient id="stitchG" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ff8a2b"/><stop offset="100%" stop-color="#ff2d55"/>
+            </linearGradient>
+          </defs>
+          <circle cx="100" cy="100" r="88" fill="none" stroke="url(#rimG)" stroke-width="21"/>
+          <circle cx="100" cy="100" r="88" fill="none" stroke="#000" stroke-width="21" stroke-dasharray="2 8" opacity=".35"/>
+          <circle cx="100" cy="100" r="97.5" fill="none" stroke="#000" stroke-width="2" opacity=".6"/>
+          <circle cx="100" cy="100" r="78.5" fill="none" stroke="#000" stroke-width="2" opacity=".6"/>
+          <path d="M100 12 v14" stroke="url(#stitchG)" stroke-width="6" stroke-linecap="round"/>
+          <g fill="url(#carbonG)">
+            <path d="M100 118 m-13 0 a13 13 0 1 1 26 0 a13 13 0 1 1 -26 0"/>
+            <path d="M24 92 L78 106 L78 124 L26 116 Z"/>
+            <path d="M176 92 L122 106 L122 124 L174 116 Z"/>
+            <path d="M88 128 L112 128 L108 176 L92 176 Z"/>
+          </g>
+          <circle cx="100" cy="118" r="9" fill="#0d1015" stroke="#3a4049" stroke-width="1.5"/>
+          <circle cx="100" cy="118" r="3.6" fill="url(#stitchG)"/>
+        </svg>
+      </div>
+    </div>
+
+    <div id="pedal-zone">
+      <button id="pedal-brake" class="pedal brake">
+        <span class="pedal-ico">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+        </span>
+        <span class="pedal-txt">BREMSE</span>
+        <i class="pedal-fill"></i>
+      </button>
+      <button id="pedal-gas" class="pedal gas">
+        <span class="pedal-ico">
+          <svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z" fill="currentColor"/></svg>
+        </span>
+        <span class="pedal-txt">GAS</span>
+        <i class="pedal-fill"></i>
+      </button>
+    </div>
+
+    <div id="aux-zone">
+      <button id="btn-handbrake" class="aux danger">HB</button>
+      <button id="btn-shift-up" class="aux paddle">▲</button>
+      <button id="btn-shift-dn" class="aux paddle">▼</button>
+      <button id="btn-reset" class="aux">↺</button>
+      <button id="btn-horn" class="aux">
+        <svg viewBox="0 0 24 24"><path d="M4 9v6h3l5 4V5L7 9H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+</section>
+
+<!-- ══════════════════════ PAUSE ══════════════════════ -->
+<section id="pause" class="screen overlay">
+  <div class="sheet">
+    <h2>PAUSE</h2>
+    <div class="sheet-stats" id="pause-stats"></div>
+    <div class="sheet-btns">
+      <button id="btn-resume" class="cta small"><span class="cta-label">WEITER</span></button>
+      <button id="btn-to-garage" class="ghost">GARAGE</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ SETTINGS ══════════════════════ -->
+<section id="settings" class="screen overlay">
+  <div class="sheet wide">
+    <h2>EINSTELLUNGEN</h2>
+    <div class="settings-body" id="settings-body"></div>
+    <button id="btn-settings-close" class="cta small"><span class="cta-label">FERTIG</span></button>
+  </div>
+</section>
+
+<div id="fatal" class="fatal"></div>
+
+<script type="module" src="./src/main.js"></script>
+<script>
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  }
+</script>
+</body>
+</html>

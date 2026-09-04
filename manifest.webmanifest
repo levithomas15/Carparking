@@ -1,0 +1,16 @@
+{
+  "name": "APEX — Hypercar Simulator",
+  "short_name": "APEX",
+  "description": "Ultra-realistischer 3D Auto-Simulator mit Lenkrad-Steuerung.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#05070c",
+  "theme_color": "#05070c",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "./assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./assets/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
